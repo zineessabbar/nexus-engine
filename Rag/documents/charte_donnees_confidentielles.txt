@@ -1,0 +1,40 @@
+CHARTE DE PROTECTION DES DONNÉES CONFIDENTIELLES
+Banque Centrale Populaire — Architecture Groupe
+Version 3.0 — Janvier 2026
+
+Article 1 - Classification des données
+
+Article 1.1 - Niveaux de classification
+Les données BCP sont classifiées en quatre niveaux :
+- Niveau 1 (Critique) : données financières clients, numéros de compte, soldes, transactions
+- Niveau 2 (Confidentiel) : données personnelles clients, données RH, données contractuelles
+- Niveau 3 (Interne) : données opérationnelles, reportings internes
+- Niveau 4 (Public) : données destinées à publication externe
+
+Article 1.2 - Identification obligatoire
+Tout nouveau projet DOIT identifier et documenter la classification de sensibilité des données traitées avant toute mise en développement. Cette classification DOIT être validée par le Responsable de la Sécurité des Systèmes d'Information (RSSI).
+
+Article 2 - Chiffrement des données
+
+Article 2.1 - Chiffrement au repos obligatoire
+Toute donnée de niveau 1 ou niveau 2 DOIT être chiffrée au repos (at-rest) selon l'algorithme AES-256 ou un équivalent certifié par l'ANSSI. L'utilisation d'algorithmes propriétaires ou non certifiés est STRICTEMENT INTERDITE. Le chiffrement doit être explicitement nommé — toute référence à un "algorithme standard de l'industrie" sans nomination explicite est considérée non conforme.
+
+Article 2.2 - Chiffrement en transit obligatoire
+Tout transfert de données de niveau 1 ou niveau 2 DOIT utiliser TLS 1.2 minimum. TLS 1.3 est recommandé. L'utilisation de HTTP non chiffré pour tout échange de données sensibles est INTERDITE, y compris dans les environnements de développement et de test.
+
+Article 2.3 - Dérogation au chiffrement
+Toute exception à l'obligation de chiffrement DOIT faire l'objet d'une dérogation écrite signée par le RSSI, avec une justification documentée et une durée de validité limitée à six (6) mois renouvelables. Toute dérogation non documentée constitue une non-conformité critique.
+
+Article 2.4 - Gestion des clés de chiffrement
+Les clés de chiffrement DOIVENT être gérées via un coffre-fort de clés (KMS) centralisé et audité. La rotation des clés est obligatoire annuellement, ou immédiatement en cas de suspicion de compromission. Le stockage des clés sur le même support que les données chiffrées est INTERDIT.
+
+Article 3 - Stockage et localisation des données
+
+Article 3.1 - Interdiction du stockage en clair
+Le stockage de données de niveau 1 ou niveau 2 en clair (non chiffrées) est STRICTEMENT INTERDIT, quel que soit le support : base de données, fichier plat, cache applicatif, logs, sauvegardes.
+
+Article 3.2 - Localisation géographique obligatoire
+Les données de niveau 1 DOIVENT être stockées exclusivement sur le territoire national marocain. Tout stockage de données de niveau 1 sur des serveurs situés à l'étranger, y compris dans des datacenters de prestataires étrangers, est INTERDIT sans dérogation explicite du Comité de Direction.
+
+Article 3.3 - Durée de conservation
+Les données clients DOIVENT être conservées selon les durées légales en vigueur. Toute suppression anticipée ou conservation excessive constitue une non-conformité réglementaire.

@@ -1,0 +1,36 @@
+# config.py
+from pathlib import Path
+from dotenv import load_dotenv
+import os 
+load_dotenv()
+
+# --- Chemins ---
+BASE_DIR = Path(__file__).parent
+DOCUMENTS_DIR = BASE_DIR / "documents" / "normes"
+
+# --- Base de données ---
+DB_CONFIG = {
+    "host": os.getenv("DB_HOSRT","localhost"),
+    "port": int(os.getenv("DB_PORT",5432)),
+    "user": os.getenv("DB_USER"),
+    "password": os.getenv("DB_PASSWORD"),
+    "dbname": os.getenv("DB_NAME","rag_db"),
+}
+
+# --- Modèles ---
+EMBEDDING_MODEL = "BAAI/bge-m3"
+EMBEDDING_DIMENSION = 1024
+RERANKER_MODEL = "BAAI/bge-reranker-v2-m3"
+LLM_MODEL = "qwen2.5:7b-instruct"
+LLM_TEMPERATURE = 0
+
+# --- Retrieval ---
+CANDIDATES_PER_METHOD = 10
+CANDIDATES_TO_RERANK = 10
+RERANK_SCORE_THRESHOLD = 0.01
+FINAL_TOP_K = 7
+
+# --- API ---
+API_HOST = "0.0.0.0"
+API_PORT = 8000
+CORS_ORIGINS = ["http://localhost:5173", "http://localhost:3000"]

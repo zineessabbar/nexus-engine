@@ -1,0 +1,33 @@
+CHARTE DE GESTION DES FLUX ET INTERFACES DE DONNÉES
+Banque Centrale Populaire — Architecture Groupe
+Version 2.0 — Janvier 2026
+
+Article 1 - Documentation des flux
+
+Article 1.1 - Référencement obligatoire de toute interface
+Toute nouvelle interface de données (API REST, batch, flux temps réel, webhook, file de messages) DOIT être documentée dans le référentiel d'architecture des flux avant sa mise en production. Cette documentation DOIT inclure : le format des données, la fréquence d'échange, le volume estimé, la classification de sensibilité des données transportées et les parties prenantes.
+
+Article 1.2 - Traçabilité bout en bout obligatoire
+Les flux de données interbancaires et les flux contenant des données financières sensibles DOIVENT être tracés de bout en bout, avec horodatage et identification de l'origine et de la destination. L'absence de traçabilité sur un flux de données sensibles constitue une non-conformité critique.
+
+Article 2 - Flux vers prestataires et systèmes externes
+
+Article 2.1 - Validation des flux externes
+Les flux de données vers des prestataires externes ou des environnements cloud public DOIVENT faire l'objet d'une validation conjointe de l'entité Architecture Groupe et de l'entité Conformité. Cette validation DOIT vérifier la localisation géographique du traitement des données.
+
+Article 2.2 - Chiffrement des flux externes obligatoire
+Tout flux de données de niveau 1 ou niveau 2 transitant vers un système externe DOIT être chiffré en transit selon TLS 1.2 minimum. L'envoi de données sensibles en clair vers un système externe est STRICTEMENT INTERDIT.
+
+Article 2.3 - Interdiction des flux non documentés vers SaaS externes
+L'envoi de logs applicatifs, de données de monitoring ou de traces contenant des données personnelles ou financières vers un service SaaS externe (ex : Datadog, Splunk, New Relic) est INTERDIT sans validation préalable de l'entité Architecture Groupe et anonymisation des données sensibles.
+
+Article 3 - APIs exposées
+
+Article 3.1 - Sécurisation obligatoire des APIs
+Toute API exposée à des systèmes tiers DOIT implémenter une authentification par token (OAuth 2.0 ou équivalent). Les APIs sans mécanisme d'authentification sont INTERDITES en environnement de production.
+
+Article 3.2 - Rate limiting et protection anti-abus
+Toute API exposée DOIT implémenter un mécanisme de limitation de débit (rate limiting) pour prévenir les abus. L'absence de rate limiting sur une API exposée constitue une non-conformité.
+
+Article 3.3 - Journalisation des appels API
+Tout appel à une API exposée DOIT être journalisé avec horodatage, identité du appelant, ressource accédée et code de réponse. Ces journaux DOIVENT être conservés minimum 12 mois.

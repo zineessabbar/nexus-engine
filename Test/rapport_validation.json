@@ -1,0 +1,114 @@
+{
+  "date": "2026-07-17T09:05:57.788454",
+  "taux_global": 100.0,
+  "tests_rag": [
+    {
+      "id": "RAG-01",
+      "question": "Quelle est la longueur minimale pour les mots de passe ?",
+      "article_attendu": "1.2",
+      "succes": true,
+      "details": "Article trouvé"
+    },
+    {
+      "id": "RAG-02",
+      "question": "Quel algorithme de chiffrement est obligatoire pour les données sensibles ?",
+      "article_attendu": "2.1",
+      "succes": true,
+      "details": "Article trouvé"
+    },
+    {
+      "id": "RAG-03",
+      "question": "Qu'est-ce que dit la norme sur l'authentification à deux facteurs ?",
+      "article_attendu": "1.1",
+      "succes": true,
+      "details": "Article trouvé"
+    },
+    {
+      "id": "RAG-04",
+      "question": "Quelles sont les règles pour héberger des données critiques de niveau 1 ?",
+      "article_attendu": "1.1",
+      "succes": true,
+      "details": "Article trouvé"
+    },
+    {
+      "id": "RAG-05",
+      "question": "Que faut-il faire en cas d'exception à l'obligation de chiffrement ?",
+      "article_attendu": "2.3",
+      "succes": true,
+      "details": "Article trouvé"
+    }
+  ],
+  "tests_agent": [
+    {
+      "id": "AGENT-01",
+      "articles_attendus": [
+        "1.1",
+        "2.1",
+        "2.2",
+        "3.1"
+      ],
+      "articles_detectes": [
+        "1.1",
+        "2.1",
+        "2.2",
+        "3.1"
+      ],
+      "articles_manques": [],
+      "succes": true,
+      "taux_detection": "4/4"
+    },
+    {
+      "id": "AGENT-02",
+      "articles_attendus": [
+        "1.1",
+        "2.1"
+      ],
+      "articles_detectes": [
+        "1.1",
+        "2.1"
+      ],
+      "articles_manques": [],
+      "succes": true,
+      "taux_detection": "2/2"
+    },
+    {
+      "id": "AGENT-03",
+      "articles_attendus": [
+        "2.1",
+        "2.2",
+        "2.3"
+      ],
+      "articles_detectes": [
+        "2.1",
+        "2.2",
+        "2.3"
+      ],
+      "articles_manques": [],
+      "succes": true,
+      "taux_detection": "3/3"
+    }
+  ],
+  "tests_hors_corpus": [
+    {
+      "id": "HC-01",
+      "question": "Quelle est la recette de la pastilla ?",
+      "succes": true,
+      "details": "Refus correct",
+      "reponse_brute": "Aucune information pertinente trouvée pour cette question."
+    },
+    {
+      "id": "HC-02",
+      "question": "Quel est le cours actuel du bitcoin ?",
+      "succes": true,
+      "details": "Refus correct",
+      "reponse_brute": "Aucune information pertinente trouvée pour cette question."
+    },
+    {
+      "id": "HC-03",
+      "question": "Comment configurer un routeur Cisco ?",
+      "succes": true,
+      "details": "Refus correct",
+      "reponse_brute": "Aucune information pertinente trouvée pour cette question."
+    }
+  ]
+}

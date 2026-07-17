@@ -1,0 +1,33 @@
+RÉFÉRENTIEL D'ARCHITECTURE APPLICATIVE
+Banque Centrale Populaire — Architecture Groupe
+Version 2.3 — Janvier 2026
+
+Article 1 - Modèle d'architecture en couches
+
+Article 1.1 - Architecture trois tiers obligatoire
+Toute nouvelle application DOIT suivre le modèle d'architecture en trois tiers : couche présentation, couche logique métier, couche données. La communication directe entre la couche présentation et la couche données est INTERDITE. Toute déviation DOIT être validée par le comité Architecture Groupe.
+
+Article 1.2 - Séparation des environnements
+Les environnements de développement, test, recette et production DOIVENT être strictement séparés. Le déploiement de code non validé en environnement de production est INTERDIT. Les données de production ne peuvent en aucun cas être utilisées dans les environnements non-production sans anonymisation préalable.
+
+Article 2 - Exposition sur Internet et sécurité périmétrique
+
+Article 2.1 - Zone démilitarisée obligatoire
+Toute application exposée sur Internet DOIT obligatoirement transiter par une zone démilitarisée (DMZ). L'exposition directe d'un serveur applicatif sur Internet sans DMZ est INTERDITE.
+
+Article 2.2 - Pare-feu applicatif web obligatoire
+Tout frontal applicatif exposé sur Internet DOIT être protégé par un pare-feu applicatif web (WAF). Le déploiement d'une application web accessible publiquement sans WAF constitue une non-conformité critique.
+
+Article 2.3 - Rupture protocolaire obligatoire
+Aucune application en contact direct avec Internet ne peut accéder directement au réseau interne BCP sans passer par une zone de rupture protocolaire. Tout flux direct Internet vers le réseau interne est INTERDIT.
+
+Article 3 - Intégration et dépendances externes
+
+Article 3.1 - Validation préalable des composants tiers
+Tout composant logiciel tiers (bibliothèque, framework, SDK) intégré dans une application BCP DOIT faire l'objet d'une analyse de sécurité préalable et être référencé dans le catalogue des composants approuvés.
+
+Article 3.2 - Interdiction des dépendances non maîtrisées
+L'intégration de composants logiciels dont la chaîne d'approvisionnement n'est pas maîtrisée (sources inconnues, licences incompatibles, versions non maintenues) est INTERDITE.
+
+Article 3.3 - Validation comité architecture
+Toute intégration avec un système tiers externe à la banque DOIT faire l'objet d'une analyse de risque préalable et d'une validation par le comité d'architecture avant toute mise en production. Cette validation DOIT être documentée et archivée.
