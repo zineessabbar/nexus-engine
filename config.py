@@ -6,11 +6,11 @@ load_dotenv()
 
 # --- Chemins ---
 BASE_DIR = Path(__file__).parent
-DOCUMENTS_DIR = BASE_DIR / "documents" / "normes"
+DOCUMENTS_DIR = BASE_DIR / "Rag" / "documents"
 
 # --- Base de données ---
 DB_CONFIG = {
-    "host": os.getenv("DB_HOSRT","localhost"),
+    "host": os.getenv("DB_HOST","localhost"),
     "port": int(os.getenv("DB_PORT",5432)),
     "user": os.getenv("DB_USER"),
     "password": os.getenv("DB_PASSWORD"),

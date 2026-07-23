@@ -21,3 +21,7 @@ Logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# cache
+.cache/
+*.json_cache

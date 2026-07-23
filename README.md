@@ -71,7 +71,7 @@ Résultat obtenu : **11/11 tests passés (100%)**
 ├── Rag/
 │   ├── chunking.py            # Découpage structure-aware
 │   ├── embeddings.py          # Génération embeddings BGE-M3
-│   ├── retreival.py           # Retrieval hybride + reranking
+│   ├── retrieval.py           # Retrieval hybride + reranking
 │   ├── vector_store.py        # Indexation pgvector (batch)
 │   ├── generation.py          # Génération avec citation
 │   └── documents/             # Chartes normatives BCP (5 fichiers)

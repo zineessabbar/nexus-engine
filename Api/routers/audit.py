@@ -1,8 +1,9 @@
 import uuid
 from datetime import datetime
+import asyncio
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import datetime
+from contextlib import asynccontextmanager
 import json
 
 
@@ -10,14 +11,7 @@ from Agent.agent_tool import init_rag_tool
 from Agent.graph import build_workflow
 from Rag.vector_store import get_db_conn
 
-router=APIRouter()
-
-try:
-    outil_rag=init_rag_tool()
-    workflow =build_workflow(outil_rag)
-except Exception as e:
-    print(f"Erreur los de l'initialisation du moteur:{e}")
-    workflow=None
+workflow=None
 
 def init_history_table():
     try:
@@ -31,7 +25,21 @@ def init_history_table():
     except Exception as e:
         print(f"verifier la table d'historique:{e}")
 
-init_history_table()
+
+@asynccontextmanager
+async def router_lifespan(router:APIRouter):
+    global workflow
+    init_history_table()
+    try:
+        outil_rag=init_rag_tool()
+        workflow =build_workflow(outil_rag)
+        print(f"Moteur IA pret")
+    except Exception as e:
+        print(f"Erreur los de l'initialisation du moteur:{e}")
+        workflow=None
+    yield
+
+router = APIRouter(lifespan=router_lifespan)
 
 class ProjectRequest(BaseModel):
     description:str
@@ -43,7 +51,7 @@ class AuditResponse(BaseModel):
 @router.post("/analyse",response_model=AuditResponse)
 async def analyse_project(request:ProjectRequest):
     if not workflow:
-        raise HTTPException(status_code=500,detail="LangGraph non initialisé")
+        raise HTTPException(status_code=503,detail="LangGraph non initialisé")
     try:
         config={"configurable":{"thread_id":str(uuid.uuid4())}}
         state = {
@@ -52,22 +60,23 @@ async def analyse_project(request:ProjectRequest):
             "textes_normatifs":[],
             "rapport_final":""
         }
-        final_state=workflow.invoke(state,config)
+        final_state=await asyncio.to_thread(workflow.invoke,state,config)
         
         domaines=final_state.get("domaines_identifies",[])
         rapport=final_state.get("rapport_final","Erreur:Aucaun rapport généré")
 
         titre_court=request.description[:40]+"..." if len(request.description)> 40 else request.description
 
-        conn=get_db_conn()
-        try:
-            cursor=conn.cursor()
-            cursor.execute("""INSERT INTO audit_history(titre_projet ,description , domaines_identifies,rapport_final)VALUES(%s,%s,%s,%s)""",(titre_court, request.description,json.dumps(domaines),rapport))
-            conn.commit()
-            cursor.close()
-        finally:
-            conn.close()
-
+        def save_to_db():
+            conn=get_db_conn()
+            try:
+                cursor=conn.cursor()
+                cursor.execute("""INSERT INTO audit_history(titre_projet ,description , domaines_identifies,rapport_final)VALUES(%s,%s,%s,%s)""",(titre_court, request.description,json.dumps(domaines),rapport))
+                conn.commit()
+                cursor.close()
+            finally:
+                conn.close()
+        await asyncio.to_thread(save_to_db)
         return AuditResponse(
             domaines_identifies=domaines,
             rapport_final=rapport
@@ -86,7 +95,7 @@ async def get_audit_history():
             cursor.close()
         finally:
             conn.close()
-
+ 
         historique=[]
         for ligne in lignes:
             historique.append({

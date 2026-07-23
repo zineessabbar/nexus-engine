@@ -18,15 +18,21 @@ logger=get_logger("agent_tool")
 
 def init_rag_tool():
     logger.info("Initialisation du RAG tool")
-    conn=get_db_conn()
-    all_chunks=load_all_chunks(conn)
+    init_conn=get_db_conn()
+    try:
+        all_chunks=load_all_chunks(init_conn)
+    finally:
+        init_conn.close()
+        
+
+
     chunks_by_id={c['id']: c for c in all_chunks}
     bm25_index=BM25SearchIndex(all_chunks)
     embedding_model=load_embedding_model()
     device="cuda" if torch.cuda.is_available() else "cpu"
     cross_encoder = CrossEncoder(RERANKER_MODEL, device=device)
 
-    rag_tool=RAGTool(conn,embedding_model,cross_encoder,all_chunks,chunks_by_id,bm25_index)
+    rag_tool=RAGTool(embedding_model,cross_encoder,all_chunks,chunks_by_id,bm25_index)
     logger.info("RAG tool initialisé")
 
     return rag_tool
