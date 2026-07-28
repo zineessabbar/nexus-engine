@@ -10,7 +10,7 @@ logger = get_logger("retreival")
 
 def load_all_chunks(conn):
     cur = conn.cursor()
-    cur.execute("SELECT id, article_number, title, text, doc_source FROM chunks")
+    cur.execute("SELECT id, article_number, title, text, doc_source, chunk_type FROM chunks")
     rows = cur.fetchall()
     cur.close()
     return [
@@ -19,7 +19,8 @@ def load_all_chunks(conn):
             "article_number": row[1], 
             "title": row[2], 
             "text": row[3],
-            "doc_source": row[4] 
+            "doc_source": row[4] ,
+            "chunk_type": row[5] 
         } for row in rows
     ]
 

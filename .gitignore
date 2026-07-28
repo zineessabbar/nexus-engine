@@ -7,6 +7,10 @@ venv/
 .venv/
 *.egg-info/
 
+#Test
+Test/
+test.py 
+
 # Logs
 Logs/
 *.log
