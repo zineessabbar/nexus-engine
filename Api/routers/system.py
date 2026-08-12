@@ -1,5 +1,9 @@
-from fastapi import APIRouter
+from fastapi import APIRouter,HTTPException
 from Rag.vector_store import get_db_conn
+
+from Agent.agent_tool import init_rag_tool
+from Agent.graph import build_workflow
+import Api.routers.audit as audit_module
 
 router=APIRouter()
 
@@ -46,3 +50,18 @@ async def get_system_stats():
             "derniere_audit":"Inconnu",
             "etat_base_de_donnees":f"erreur:{str(e)}"
         }
+
+@router.post("/reload")
+async def reload_corpus():
+    try:
+        import asyncio
+        def _reload():
+            new_rag_tool=init_rag_tool()
+            new_workflow=build_workflow(new_rag_tool)
+            audit_module.new_workflow= new_workflow
+            return True
+
+        await asyncio.to_thread(_reload)
+        return {"status":"reload_success","message":"Corpus rechargé avec succès"}
+    except Exception as e:
+        raise HTTPException(status_code=500,detail={"status":"reload_error","error":str(e)})

@@ -1,5 +1,8 @@
+
 from retrieval import hybrid_search
 from abc import ABC, abstractmethod
+from llm_providers import LLMProvider, OllamaProvider
+from config import LLM_MODEL ,RERANK_SCORE_THRESHOLD
 
 NOT_FOUND_MESSAGE="Je n'ai trouvé aucune information dans les documents fournis."
 
@@ -19,70 +22,74 @@ class LLMProvider(ABC):
     def generate(self,system_prompt,user_prompt):
         pass
 
-def answer_question(question,conn,embedding_model,cross_encoder,bm25_index,all_chunks,chunks_by_id,llm_provider):
-    top_chunks = hybrid_search(
-        query=question, conn=conn, embedding_model=embedding_model, bm25_index=bm25_index, all_chunks=all_chunks, chunks_by_id=chunks_by_id, cross_encoder=cross_encoder
-    )
-    top_score = top_chunks[0].get("rerank_score", 0.0) if top_chunks else 0.0
-    if should_skip(top_chunks,top_relevance_score=top_score):
-        return {
-            "question":question,
-            "answer":NOT_FOUND_MESSAGE,
-            "source_used":[],
-            "generation_skipped":True,
-            }
-    filtered_chunks = [
-        chunk for chunk in top_chunks 
-        if chunk.get("rerank_score", -999.0) >= RERANK_SCORE_THRESHOLD
-    ]
+def build_user_prompt(question: str, chunks: list) -> str:
+    context_parts = []
+    for i, chunk in enumerate(chunks, 1):
+        source = f"{chunk.get('doc_source', 'Inconnu')}, Article {chunk.get('article_number', '?')}"
+        context_parts.append(f"[Extrait {i}] (Source : {source})\n{chunk['text']}")
+    context = "\n\n".join(context_parts)
+    return f"Contexte :\n{context}\n\nQuestion : {question}"
 
-    user_prompt=build_user_prompt(question,filtered_chunks)
-    answer=llm_provider.generate(SYSTEM_PROMPT,user_prompt)
-    
-    return {
-        "question":question,
-        "answer":answer,
-        "source_used":[(c['doc_source'],c['article_number']) for c in filtered_chunks],
-        "generation_skipped":False,
-    }
 
-class OllamaProvider(LLMProvider):
-    def __init__(self,model_name="qwen2.5:7b"):
-        self.model_name = model_name
-
-    def generate(self,system_prompt,user_prompt):
-        # pyrefly: ignore [missing-import]
-        import ollama
-        response = ollama.chat(model=self.model_name,messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],)
-        return response['message']['content']
-
-def format_context(chunks):
-    if not chunks:
-        return "Aucune extrait pertinent trouvé dans le corpus."
-    blocks=[]
-    for i , chunk in enumerate(chunks,1):
-        source_label=f"{chunk['doc_source']},Article {chunk['article_number']}"
-        blocks.append(f"[Extrait {i}] (Source:{source_label})\n{chunk['text']}")
-    return "\n\n".join(blocks)
-
-def build_user_prompt(question,chunks):
-    context=format_context(chunks)
-    return f"""voici les extraits de documents pertinents trouvés dans le corpus: 
-    {context} 
-    -------
-    Question:{question}"""
-
-RERANK_SCORE_THRESHOLD=0.0
-
-def should_skip(chunks,top_relevance_score):
+def should_skip(chunks: list, top_relevance_score: float) -> bool:
     if not chunks:
         return True
-    if top_relevance_score < RERANK_SCORE_THRESHOLD:
+    if top_relevance_score <= RERANK_SCORE_THRESHOLD:
         return True
     return False
+
+
+def answer_question(question: str, conn, embedding_model, cross_encoder,
+                    bm25_index, all_chunks, chunks_by_id,
+                    llm_provider: LLMProvider = None) -> dict:
+
+    if llm_provider is None:
+        llm_provider = OllamaProvider(model=LLM_MODEL)
+
+    top_chunks = hybrid_search(
+        query=question,
+        conn=conn,
+        embedding_model=embedding_model,
+        bm25_index=bm25_index,
+        all_chunks=all_chunks,
+        chunks_by_id=chunks_by_id,
+        cross_encoder=cross_encoder,
+    )
+
+    top_score = top_chunks[0].get("rerank_score", 0.0) if top_chunks else 0.0
+
+    if should_skip(top_chunks, top_relevance_score=top_score):
+        return {
+            "question": question,
+            "answer": NOT_FOUND_MESSAGE,
+            "source_used": [],
+            "generation_skipped": True,
+        }
+
+    filtered_chunks = [
+        c for c in top_chunks
+        if c.get("rerank_score", -999.0) > RERANK_SCORE_THRESHOLD
+    ]
+
+    if not filtered_chunks:
+        return {
+            "question": question,
+            "answer": NOT_FOUND_MESSAGE,
+            "source_used": [],
+            "generation_skipped": True,
+        }
+
+    user_prompt = build_user_prompt(question, filtered_chunks)
+    answer = llm_provider.generate(SYSTEM_PROMPT, user_prompt)
+
+    return {
+        "question": question,
+        "answer": answer,
+        "source_used": [
+            (c["doc_source"], c["article_number"]) for c in filtered_chunks
+        ],
+        "generation_skipped": False,
+    }
         
 def main():
     from vector_store import get_db_conn

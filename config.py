@@ -34,3 +34,25 @@ FINAL_TOP_K = 4
 API_HOST = "0.0.0.0"
 API_PORT = 8000
 CORS_ORIGINS = ["http://localhost:5173", "http://localhost:3000"]
+
+# --- LLM Providers ---
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+AVAILABLE_MODELS = {
+    "qwen2.5:7b": {
+        "provider": "ollama",
+        "label": "Qwen 2.5 7B (Local)",
+        "description": "Modèle local — souveraineté des données garantie",
+    },
+    "gpt-4o-mini": {
+        "provider": "openai",
+        "label": "GPT-4o Mini (OpenAI)",
+        "description": "Modèle cloud — données envoyées vers OpenAI",
+    },
+    "gpt-4o": {
+        "provider": "openai",
+        "label": "GPT-4o (OpenAI)",
+        "description": "Modèle cloud haute performance",
+    },
+}

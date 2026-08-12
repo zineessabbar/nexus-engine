@@ -7,15 +7,12 @@ venv/
 .venv/
 *.egg-info/
 
-#Test
-Test/
-test.py 
-
-# Logs
+# Logs (Correction de la casse)
+logs/
 Logs/
 *.log
 
-# Environnement
+# Environnement (Très important pour la clé OpenAI)
 .env
 
 # IDE
@@ -26,6 +23,15 @@ Logs/
 .DS_Store
 Thumbs.db
 
-# cache
+# Cache
 .cache/
 *.json_cache
+
+# Résultats des tests (Ignore les JSON générés, mais GARDE les scripts Python)
+Test/*.json
+
+# Documents confidentiels BCP (Empêche d'envoyer les données bancaires sur GitHub)
+Rag/documents/*.pdf
+Rag/documents/*.docx
+Rag/documents/*.txt
+Rag/documents/*.doc

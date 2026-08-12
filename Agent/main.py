@@ -1,37 +1,40 @@
-from Agent.agent_tool import init_rag_tool
-from Agent.graph import build_workflow
 import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../Rag')))
-from langchain_core.messages import HumanMessage
+from Agent.agent_tool import init_rag_tool
+from Agent.graph import build_workflow
+from logger import get_logger
+
+logger = get_logger("agent.main")
+
 
 def main():
-    print("démarrage du workflow")
-    try:
-        outil_rag=init_rag_tool()
-        workflow=build_workflow(outil_rag)
-    except Exception as e:
-        print(f"Erreur de chargement des outils: {e}")
-        sys.exit(1)
-    print(" tapez 'quitter' ou 'quit' ou 'exit' ou 'q' pour quitter")
+    print("Démarrage du workflow NEXUS...")
+    rag_tool = init_rag_tool()
+    workflow = build_workflow(rag_tool)
 
-    config={"configurable":{"thread_id":"session_architecture_1"}}    
+    print("Tapez 'quitter' pour arrêter.\n")
     while True:
-        user_input=input("Soumettez une description projet ou une question : ")
-        if user_input.lower() in ["quitter", "quit","exit" , "q"]:
+        description = input("Soumettez une description de projet : ").strip()
+        if description.lower() in ("quitter", "quit", "exit", "q"):
             break
-        state={
-            "description_projet":user_input,
-            "domaines_identifies":[],
-            "textes_normatifs":[],
-            "rapport_final":""
+        if not description:
+            continue
+
+        print("\nDémarrage de l'audit...")
+        state = {
+            "description_projet": description,
+            "domaines_identifies": [],
+            "textes_normatifs": [],
+            "rapport_final": "",
         }
 
-        print("Démarrage de l'audit")
-        final_state=workflow.invoke(state,config)
+        final_state = workflow.invoke(state)
+        print("\n" + "=" * 60)
+        print(final_state.get("rapport_final", "Aucun rapport généré."))
+        print("=" * 60 + "\n")
 
-        print(final_state.get("rapport_final","Erreur:Aucun rapport généré"))
 
 if __name__ == "__main__":
     main()

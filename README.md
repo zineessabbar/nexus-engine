@@ -1,3 +1,5 @@
+# Moteur d'Architecture et de Conformité IT (RAG + LangGraph)
+
 ## Architecture
 Documents normatifs (5 chartes)
 ↓
@@ -7,7 +9,10 @@ Retrieval hybride : vectoriel + BM25 + RRF + BGE-reranker
 ↓
 Agent LangGraph : planificateur → extracteur → rédacteur
 ↓
-FastAPI REST : POST /audit | GET /history | GET /stats
+FastAPI REST : 
+ - POST /audit/analyse (Standard)
+ - POST /audit/analyse/stream (Server-Sent Events)
+ - GET /system/history | GET /system/stats
 ↓
 Rapport de Conformité structuré
 
@@ -19,7 +24,7 @@ Rapport de Conformité structuré
 |---|---|
 | Embeddings | BAAI/bge-m3 (local) |
 | Reranking | BAAI/bge-reranker-v2-m3 |
-| LLM | qwen2.5:7b-instruct via Ollama |
+| LLM (Hybride) | Qwen 2.5:7B (Ollama Local) / GPT-4o & GPT-4o-Mini (OpenAI Cloud) |
 | Base vectorielle | PostgreSQL + pgvector |
 | Recherche lexicale | BM25 (rank-bm25) |
 | Agent | LangGraph |
@@ -29,47 +34,37 @@ Rapport de Conformité structuré
 
 ## Utilisation
 
-### Via API (Postman)
-POST http://localhost:8000/api/v1/audit/analyse
+### Via API (Postman ou Frontend)
+**Endpoint Standard :** `POST http://localhost:8000/api/v1/audit/analyse`
+**Endpoint Streaming :** `POST http://localhost:8000/api/v1/audit/analyse/stream`
+
 Content-Type: application/json
+```json
 {
-"description": "Application web bancaire avec authentification
-simple et données hébergées sur AWS S3..."
+  "description": "Application web bancaire avec authentification simple et données hébergées sur AWS S3...",
+  "model": "qwen2.5:7b" 
 }
 
-### Via terminal
-
-```bash
+Via terminal
 python -m Agent.main
-```
 
----
+Évaluation Automatisée (Ragas)
+Bash
+python -m Test.ragas_eval
+(Évalue la fidélité, la pertinence de la réponse et la précision du contexte via un LLM "Juge").
 
-## Tests de validation
-
-```bash
-python -m Test.test
-```
-
-Résultat obtenu : **11/11 tests passés (100%)**
-
-| Catégorie | Résultat |
-|---|---|
-| Tests RAG (pertinence retrieval) | 5/5 ✅ |
-| Tests Agent (détection non-conformités) | 3/3 ✅ |
-| Tests hors-corpus (anti-hallucination) | 3/3 ✅ |
-
----
-
-## Structure du projet
-├── config.py                  # Configuration centralisée
+Structure du projet
+├── config.py                  # Configuration centralisée et modèles disponibles
 ├── logger.py                  # Logs professionnels
 ├── prompts.yaml               # Prompts LLM externalisés
 ├── prompts.py                 # Chargeur de prompts
+├── llm_providers.py           # Routage dynamique des LLMs (Ollama / OpenAI)
+├── docker-compose.yml         # Conteneur pour PostgreSQL + pgvector
 ├── requirements.txt
 ├── .env.example
 ├── Rag/
 │   ├── chunking.py            # Découpage structure-aware
+│   ├── document_loader.py     # Extraction OCR, PDF, DOCX
 │   ├── embeddings.py          # Génération embeddings BGE-M3
 │   ├── retrieval.py           # Retrieval hybride + reranking
 │   ├── vector_store.py        # Indexation pgvector (batch)
@@ -85,10 +80,9 @@ Résultat obtenu : **11/11 tests passés (100%)**
 ├── Api/
 │   ├── main.py                # Application FastAPI
 │   └── routers/
-│       ├── audit.py           # POST /analyse, GET /history
-│       └── system.py          # GET /health, GET /stats
+│       ├── audit.py           # Routes d'audit (Standard & Stream)
+│       └── system.py          # GET /health, GET /stats, POST /reload
 └── Test/
 ├── test.py                # Script de validation
+├── ragas_eval.py          # Pipeline d'évaluation Ragas
 └── rapport_validation.json
-
----

@@ -16,4 +16,9 @@ def get_prompt(name: str, **kwargs) -> str:
     prompts = load_prompts()
     if name not in prompts:
         raise KeyError(f"Prompt '{name}' introuvable dans prompts.yaml")
-    return prompts[name].format(**kwargs)
+    
+    # Remplacement sécurisé pour éviter le crash des accolades
+    texte = prompts[name]
+    for key, value in kwargs.items():
+        texte = texte.replace(f"{{{key}}}", str(value))
+    return texte

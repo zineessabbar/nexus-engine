@@ -1,6 +1,8 @@
 fastapi==0.139.2
 langchain_core==1.4.9
 langchain_ollama==1.1.0
+langchain-openai>=0.1.20
+langchain-community==0.0.38
 langgraph==1.2.9
 numpy==2.5.1
 ollama==0.6.2
@@ -13,3 +15,5 @@ rank_bm25==0.2.2
 sentence_transformers==5.6.0
 torch==2.12.1
 uvicorn[standard]>=0.30
+ragas>=0.1.14
+datasets>=2.19.0

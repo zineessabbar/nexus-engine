@@ -15,24 +15,38 @@ from config import RERANKER_MODEL
 from logger import get_logger
 
 logger=get_logger("agent_tool")
+_rag_tool = None
 
-def init_rag_tool():
+
+def init_rag_tool() -> RAGTool:
+    global _rag_tool
     logger.info("Initialisation du RAG tool")
-    init_conn=get_db_conn()
-    try:
-        all_chunks=load_all_chunks(init_conn)
-    finally:
-        init_conn.close()
-        
 
+    embedding_model = load_embedding_model()
 
-    chunks_by_id={c['id']: c for c in all_chunks}
-    bm25_index=BM25SearchIndex(all_chunks)
-    embedding_model=load_embedding_model()
-    device="cuda" if torch.cuda.is_available() else "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     cross_encoder = CrossEncoder(RERANKER_MODEL, device=device)
 
-    rag_tool=RAGTool(embedding_model,cross_encoder,all_chunks,chunks_by_id,bm25_index)
-    logger.info("RAG tool initialisé")
+    init_conn = get_db_conn()
+    try:
+        all_chunks = load_all_chunks(init_conn)
+    finally:
+        init_conn.close()
 
-    return rag_tool
+    chunks_by_id = {c["id"]: c for c in all_chunks}
+    bm25_index = BM25SearchIndex(all_chunks)
+
+    _rag_tool = RAGTool(
+        embedding_model=embedding_model,
+        cross_encoder=cross_encoder,
+        bm25_index=bm25_index,
+        all_chunks=all_chunks,
+        chunks_by_id=chunks_by_id,
+    )
+
+    logger.info("RAG tool initialisé")
+    return _rag_tool
+
+
+def get_rag_tool() -> RAGTool:
+    return _rag_tool

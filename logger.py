@@ -2,6 +2,7 @@
 import logging
 import sys
 from pathlib import Path
+from config import LOG_LEVEL
 
 LOG_DIR = Path(__file__).parent / "logs"
 LOG_DIR.mkdir(exist_ok=True)
@@ -28,7 +29,7 @@ def get_logger(name: str) -> logging.Logger:
     file_handler = logging.FileHandler(
         LOG_DIR / "audit.log", encoding="utf-8"
     )
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
     file_handler.setFormatter(formatter)
     
     logger.addHandler(console_handler)
