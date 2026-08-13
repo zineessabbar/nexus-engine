@@ -15,53 +15,119 @@ from Agent.graph import build_workflow
 from Rag.vector_store import get_db_conn
 from logger import get_logger
 
-workflow=None
+workflow = None
 logger = get_logger("api.audit")
 
-def init_history_table():
+
+# ---------------------------------------------------------------------------
+# Database schema
+# ---------------------------------------------------------------------------
+def init_tables():
+    """Create the sessions + messages tables if they don't exist."""
     try:
         conn = get_db_conn()
         cursor = conn.cursor()
+
+        # Sessions table — one row per chat thread
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS audit_history (
-                id SERIAL PRIMARY KEY,
-                titre_projet TEXT,
-                date_audit TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                status TEXT,
-                extrait TEXT,
-                rapport_complet TEXT
+            CREATE TABLE IF NOT EXISTS sessions (
+                session_id TEXT PRIMARY KEY,
+                session_name TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # Messages table — each audit exchange linked to a session
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS messages (
+                id SERIAL PRIMARY KEY,
+                session_id TEXT NOT NULL REFERENCES sessions(session_id) ON DELETE CASCADE,
+                role TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         conn.commit()
         cursor.close()
         conn.close()
+        logger.info("Tables sessions/messages initialisées")
     except Exception as e:
-        logger.error(f"Erreur création table d'historique : {e}")
+        logger.error(f"Erreur création tables : {e}")
 
 
-@asynccontextmanager
-async def router_lifespan(router:APIRouter):
-    global workflow
-    init_history_table()
+def _persist_exchange(session_id: str, session_name: str, user_msg: str, agent_msg: str):
+    """Persist a full user→agent exchange inside a session."""
+    conn = get_db_conn()
     try:
-        outil_rag=init_rag_tool()
-        workflow =build_workflow(outil_rag)
+        cur = conn.cursor()
+
+        # Upsert session (create if new, ignore if exists)
+        cur.execute(
+            """
+            INSERT INTO sessions (session_id, session_name, created_at)
+            VALUES (%s, %s, NOW())
+            ON CONFLICT (session_id) DO NOTHING
+            """,
+            (session_id, session_name),
+        )
+
+        # Insert user message
+        cur.execute(
+            "INSERT INTO messages (session_id, role, content) VALUES (%s, %s, %s)",
+            (session_id, "user", user_msg),
+        )
+
+        # Insert agent message
+        cur.execute(
+            "INSERT INTO messages (session_id, role, content) VALUES (%s, %s, %s)",
+            (session_id, "agent", agent_msg),
+        )
+
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        logger.error(f"Erreur persistance session : {e}")
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Router lifespan
+# ---------------------------------------------------------------------------
+@asynccontextmanager
+async def router_lifespan(router: APIRouter):
+    global workflow
+    init_tables()
+    try:
+        outil_rag = init_rag_tool()
+        workflow = build_workflow(outil_rag)
         logger.info("Workflow LangGraph initialisé")
     except Exception as e:
-        logger.error(f"Erreur los de l'initialisation du moteur:{e}")
-        workflow=None
+        logger.error(f"Erreur lors de l'initialisation du moteur : {e}")
+        workflow = None
     yield
+
 
 router = APIRouter(lifespan=router_lifespan)
 
+
+# ---------------------------------------------------------------------------
+# Pydantic models
+# ---------------------------------------------------------------------------
 class AuditResponse(BaseModel):
-    domaines_identifies:list[str]
-    rapport_final:str
+    domaines_identifies: list[str]
+    rapport_final: str
+
 
 class ProjectRequest(BaseModel):
     description: str
     model: str = "qwen2.5:7b"
 
+
+# ---------------------------------------------------------------------------
+# POST /analyse  (standard, non-streaming)
+# ---------------------------------------------------------------------------
 @router.post("/analyse")
 async def analyse_project(request: ProjectRequest):
     if not workflow:
@@ -84,7 +150,8 @@ async def analyse_project(request: ProjectRequest):
             model=request.model,
         )
 
-        config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+        session_id = str(uuid.uuid4())
+        config = {"configurable": {"thread_id": session_id}}
         state = {
             "description_projet": request.description,
             "domaines_identifies": [],
@@ -100,26 +167,12 @@ async def analyse_project(request: ProjectRequest):
 
         final_state = await asyncio.to_thread(run)
 
-        # Persistance en base
         rapport = final_state.get("rapport_final", "")
         domaines = final_state.get("domaines_identifies", [])
-        extrait = rapport[:200] if rapport else ""
 
-        conn = get_db_conn()
-        try:
-            cur = conn.cursor()
-            cur.execute(
-                """
-                INSERT INTO audit_history
-                    (titre_projet, date_audit, status, extrait, rapport_complet)
-                VALUES (%s, NOW(), %s, %s, %s)
-                """,
-                (request.description[:80], "Terminé", extrait, rapport),
-            )
-            conn.commit()
-            cur.close()
-        finally:
-            conn.close()
+        # Persist as a session
+        session_name = request.description[:80]
+        _persist_exchange(session_id, session_name, request.description, rapport)
 
         return AuditResponse(
             domaines_identifies=domaines,
@@ -132,9 +185,12 @@ async def analyse_project(request: ProjectRequest):
         logger.error(f"Erreur analyse : {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ---------------------------------------------------------------------------
+# POST /analyse/stream  (SSE streaming)
+# ---------------------------------------------------------------------------
 @router.post("/analyse/stream")
 async def analyse_project_stream(request: ProjectRequest):
-    # --- Validation du modèle (miroir de /analyse) ---
     if request.model not in AVAILABLE_MODELS:
         raise HTTPException(
             status_code=400,
@@ -146,7 +202,6 @@ async def analyse_project_stream(request: ProjectRequest):
     if model_config["provider"] == "openai" and not OPENAI_API_KEY:
         raise HTTPException(status_code=503, detail="Clé API OpenAI non configurée")
 
-    # --- Construction dynamique du provider et du workflow ---
     try:
         llm_provider = get_provider(
             provider_name=model_config["provider"],
@@ -159,7 +214,8 @@ async def analyse_project_stream(request: ProjectRequest):
 
     async def generate():
         try:
-            config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+            session_id = str(uuid.uuid4())
+            config = {"configurable": {"thread_id": session_id}}
             state = {
                 "description_projet": request.description,
                 "domaines_identifies": [],
@@ -174,6 +230,10 @@ async def analyse_project_stream(request: ProjectRequest):
 
             domaines = final_state.get("domaines_identifies", [])
             rapport = final_state.get("rapport_final", "")
+
+            # Persist as a session
+            session_name = request.description[:80]
+            _persist_exchange(session_id, session_name, request.description, rapport)
 
             yield f"data: {json.dumps({'type': 'domaines', 'data': domaines})}\n\n"
 
@@ -196,28 +256,37 @@ async def analyse_project_stream(request: ProjectRequest):
     )
 
 
-
+# ---------------------------------------------------------------------------
+# GET /history  → returns SessionEntry[] for the frontend
+# ---------------------------------------------------------------------------
 @router.get("/history")
-async def get_audit_history():
+async def get_sessions():
+    """Return all sessions in the shape the frontend expects:
+    [{ session_id, session_name, created_at (unix) }]
+    """
     try:
-        conn=get_db_conn()
+        conn = get_db_conn()
         try:
-            cursor=conn.cursor()
-            cursor.execute("""SELECT id,titre_projet,date_audit,rapport_final FROM audit_history ORDER BY date_audit DESC """)
-            lignes=cursor.fetchall()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT session_id, session_name, created_at
+                FROM sessions
+                ORDER BY created_at DESC
+            """)
+            rows = cursor.fetchall()
             cursor.close()
         finally:
             conn.close()
- 
-        historique=[]
-        for ligne in lignes:
-            historique.append({
-                "id":ligne[0],
-                "titre_projet":ligne[1],
-                "date_audit":ligne[2].strftime("%Y-%m-%d %H:%M"),
-                "status":"Terminé",
-                "extrait":ligne[3][:100]+"..."
-            })
-        return historique
+
+        return [
+            {
+                "session_id": row[0],
+                "session_name": row[1],
+                "created_at": int(row[2].timestamp()) if row[2] else 0,
+            }
+            for row in rows
+        ]
+
     except Exception as e:
-        raise HTTPException(status_code=500,detail=f"Erreur base de données:{e}")
+        logger.error(f"Erreur chargement sessions : {e}")
+        raise HTTPException(status_code=500, detail=f"Erreur base de données : {e}")

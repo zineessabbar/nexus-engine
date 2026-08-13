@@ -43,7 +43,6 @@ def clear_existing_chunks(conn, doc_source):
         "DELETE FROM chunks WHERE doc_source = %s",
         (doc_source,)
     )
-    conn.commit()
     cur.close()
 
 def insert_chunks(conn, chunks, doc_source, embeddings):
@@ -62,7 +61,6 @@ def insert_chunks(conn, chunks, doc_source, embeddings):
                 embedding.tolist()
             )
         )
-    conn.commit()
     cur.close()
 
 def main():
@@ -124,9 +122,15 @@ def main():
                 normalize_embeddings=True
             )
             
-            clear_existing_chunks(connection, fichier)
-            insert_chunks(connection, chunks, fichier, embeddings)
-            logger.info(f"'{fichier}' → {len(chunks)} chunks indexés")
+            try:
+                clear_existing_chunks(connection, fichier)
+                insert_chunks(connection, chunks, fichier, embeddings)
+                connection.commit()
+                logger.info(f"'{fichier}' → {len(chunks)} chunks indexés")
+            except Exception as e:
+                connection.rollback()
+                logger.error(f"Erreur lors de l'indexation de '{fichier}' : {e}")
+                continue
 
         logger.info("Indexation batch complète")
         

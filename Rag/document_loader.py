@@ -1,7 +1,6 @@
 import re
 import fitz
 import docx
-import easyocr
 import numpy as np
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
@@ -54,6 +53,7 @@ def load_pdf(path):
         if not text or len(text) < 50:
             logger.warning(f"Page {page_num + 1}— OCR requis")
             if ocr_reader is None:
+                import easyocr
                 ocr_reader = easyocr.Reader(["fr", "en"], gpu=True)
             text = _ocr_page(page, ocr_reader)
         

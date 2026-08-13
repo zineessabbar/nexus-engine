@@ -58,7 +58,7 @@ async def reload_corpus():
         def _reload():
             new_rag_tool=init_rag_tool()
             new_workflow=build_workflow(new_rag_tool)
-            audit_module.new_workflow= new_workflow
+            audit_module.workflow = new_workflow
             return True
 
         await asyncio.to_thread(_reload)
