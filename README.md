@@ -1,94 +1,48 @@
+# Projet NEXUS : Moteur de Conformité Architecturale IA (Engine)
+###  Note de Confidentialité : 
+Ce dépôt contient une version anonymisée (Proof of Concept) du moteur d'évaluation de conformité architecturale conçu lors d'un stage au sein de la Direction Architecture des Systèmes d'Information de la Banque Centrale Populaire (BCP). Les chartes internes, les données normatives et l'infrastructure propriétaire ont été retirées ou remplacées par des données de test.
+
+###  Interface Client : 
+Ce dépôt contient uniquement le backend IA. L'interface utilisateur correspondante, développée avec React 18, Vite et Zustand, est disponible dans le dépôt [nexus-ui](https://github.com/zineessabbar/nexus-ui)
+
+## Présentation
+NEXUS est un moteur d'audit automatisé combinant un pipeline RAG (Retrieval-Augmented Generation) et un agent d'orchestration LangGraph pour confronter automatiquement les architectures des projets IT aux normes de sécurité, de données et d'hébergement. Conçu pour le secteur bancaire, le système garantit une stricte souveraineté des données en exécutant l'intégralité de la chaîne d'intelligence artificielle localement.
+
 ## Architecture
 Documents normatifs (5 chartes)
-↓
+        ↓
 Chunking structure-aware → BGE-M3 embeddings → pgvector
-↓
+        ↓
 Retrieval hybride : vectoriel + BM25 + RRF + BGE-reranker
-↓
+        ↓
 Agent LangGraph : planificateur → extracteur → rédacteur
-↓
+        ↓
 FastAPI REST : POST /audit | GET /history | GET /stats
-↓
+        ↓
 Rapport de Conformité structuré
 
----
 
 ## Stack technique
+Orchestration IA : LangGraph
 
-| Composant | Technologie |
-|---|---|
-| Embeddings | BAAI/bge-m3 (local) |
-| Reranking | BAAI/bge-reranker-v2-m3 |
-| LLM | qwen2.5:7b-instruct via Ollama |
-| Base vectorielle | PostgreSQL + pgvector |
-| Recherche lexicale | BM25 (rank-bm25) |
-| Agent | LangGraph |
-| API | FastAPI |
+Modèles de Langage : Qwen 2.5 7B via Ollama (Local)- Abstraction multi-provider pour GPT-4o
 
----
+Modèles d'Embedding : BAAI/bge-m3 et BAAI/bge-reranker-v2-m3
+
+Base de Données Vectorielle : PostgreSQL avec l'extension pgvector
+
+API & Streaming : FastAPI avec implémentation du Server-Sent Events (SSE) pour le streaming de la réponse token par token
+
 
 ## Utilisation
-
-### Via API (Postman)
-POST http://localhost:8000/api/v1/audit/analyse
-Content-Type: application/json
-{
-"description": "Application web bancaire avec authentification
-simple et données hébergées sur AWS S3..."
-}
-
-### Via terminal
+Le système expose plusieurs endpoints, dont POST /api/v1/audit/analyse pour soumettre les descriptions d'architecture.
 
 ```bash
-python -m Agent.main
-```
 
----
+#Lancement du serveur FastAPI en local
+python -m Api.main
 
-## Tests de validation
-
-```bash
+#Exécution de la suite de tests formels
 python -m Test.test
 ```
 
-Résultat obtenu : **11/11 tests passés (100%)**
-
-| Catégorie | Résultat |
-|---|---|
-| Tests RAG (pertinence retrieval) | 5/5 ✅ |
-| Tests Agent (détection non-conformités) | 3/3 ✅ |
-| Tests hors-corpus (anti-hallucination) | 3/3 ✅ |
-
----
-
-## Structure du projet
-├── config.py                  # Configuration centralisée
-├── logger.py                  # Logs professionnels
-├── prompts.yaml               # Prompts LLM externalisés
-├── prompts.py                 # Chargeur de prompts
-├── requirements.txt
-├── .env.example
-├── Rag/
-│   ├── chunking.py            # Découpage structure-aware
-│   ├── embeddings.py          # Génération embeddings BGE-M3
-│   ├── retrieval.py           # Retrieval hybride + reranking
-│   ├── vector_store.py        # Indexation pgvector (batch)
-│   ├── generation.py          # Génération avec citation
-│   └── documents/             # Chartes normatives BCP (5 fichiers)
-├── Agent/
-│   ├── state.py               # État LangGraph
-│   ├── nodes.py               # Nœuds : planificateur, extracteur, rédacteur
-│   ├── graph.py               # Graphe LangGraph
-│   ├── rag_tool.py            # RAG encapsulé comme outil
-│   ├── agent_tool.py          # Initialisation des ressources
-│   └── main.py                # Interface terminal
-├── Api/
-│   ├── main.py                # Application FastAPI
-│   └── routers/
-│       ├── audit.py           # POST /analyse, GET /history
-│       └── system.py          # GET /health, GET /stats
-└── Test/
-├── test.py                # Script de validation
-└── rapport_validation.json
-
----
